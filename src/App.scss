@@ -1,0 +1,44 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .ProseMirror {
+        min-width: 1024px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px;
+
+        .page_header,
+        .page_footer,
+        .page_content {
+            width: 210mm;
+            background-color: #fff;
+            box-sizing: border-box;
+            padding: 0 20mm;
+        }
+
+        .page_header {
+            min-height: 20mm;
+            padding-top: 20mm;
+
+            *:first-child {
+                margin-top: 0;
+            }
+        }
+
+        .page_footer {
+            min-height: 20mm;
+            padding-bottom: 20mm;
+
+            *:last-child {
+                margin-bottom: 0;
+            }
+        }
+
+        .page_content {
+            min-height: 257mm;
+        }
+    }
+}

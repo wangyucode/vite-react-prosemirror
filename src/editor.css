@@ -314,8 +314,6 @@ img.ProseMirror-separator {
   background-clip: padding-box;
   border-radius: 4px;
   border: 2px solid rgba(0, 0, 0, 0.2);
-  padding: 5px 0;
-  margin-bottom: 23px;
 }
 
 .ProseMirror p:first-child,
@@ -329,9 +327,13 @@ img.ProseMirror-separator {
 }
 
 .ProseMirror {
-  padding: 4px 8px 4px 14px;
   line-height: 1.2;
   outline: none;
+  background-color: #ddd;
+  margin-bottom: 0;
 }
 
 .ProseMirror p { margin-bottom: 1em }
+
+
+
