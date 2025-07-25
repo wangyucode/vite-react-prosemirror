@@ -3,7 +3,14 @@ import { nodes as basicNodes } from "prosemirror-schema-basic";
 
 export const nodes: { [key: string]: NodeSpec } = {
   doc: {
+    content: "page+",
+  },
+  page: {
     content: "page_part+",
+    parseDOM: [{ tag: "div.page" }],
+    toDOM() {
+      return ["div", { class: "page" }, 0];
+    },
   },
   page_header: {
     content: "block+",

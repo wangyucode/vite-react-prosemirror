@@ -9,6 +9,7 @@ import { pageSchema } from './schema/schema'
 
 import './editor.css'
 import './App.scss'
+import { paginationPlugin } from './plugin/pagination'
 
 
 function App() {
@@ -19,7 +20,7 @@ function App() {
     const view = new EditorView(document.querySelector("#editor"), {
       state: EditorState.create({
         doc: DOMParser.fromSchema(pageSchema).parse(tempDiv),
-        plugins: exampleSetup({ schema: pageSchema })
+        plugins: exampleSetup({ schema: pageSchema }).concat([paginationPlugin])
       })
     });
     return () => view.destroy(); // 清理函数
