@@ -7,9 +7,19 @@ export const nodes: { [key: string]: NodeSpec } = {
   },
   page: {
     content: "page_part+",
-    parseDOM: [{ tag: "div.page" }],
-    toDOM() {
-      return ["div", { class: "page" }, 0];
+    parseDOM: [
+      {
+        tag: "div.page",
+        getAttrs(dom: HTMLElement) {
+          return { num: dom.getAttribute("num") || 1 };
+        },
+      },
+    ],
+    attrs: {
+      num: { default: 1, validate: "number" },
+    },
+    toDOM(node) {
+      return ["div", { class: "page", num: node.attrs.num }, 0];
     },
   },
   page_header: {
