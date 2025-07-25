@@ -27,23 +27,32 @@
             }
 
             .page_header {
-                min-height: 20mm;
+                height: 10mm;
 
-                *:first-child {
-                    margin-top: 0;
+                * {
+                    user-select: none;
+
+                    &:first-child {
+                        margin-top: 0;
+                    }
                 }
             }
 
             .page_footer {
-                min-height: 20mm;
+                height: 10mm;
 
-                *:last-child {
-                    margin-bottom: 0;
+                * {
+                    user-select: none;
+
+                    // &:last-child {
+                    //     margin-bottom: 0;
+                    // }
                 }
             }
 
             .page_content {
-                flex-grow: 1;
+                height: 297mm - 40mm - 10mm - 10mm; // 294mm A4 page height minus padding and header/footer height
+                overflow-y: hidden;
             }
         }
     }

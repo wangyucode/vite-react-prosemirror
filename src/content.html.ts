@@ -21,7 +21,7 @@ export const initialContent = `
         a numbered list.</p>
 </div>
 <div class="page_footer">
-    <p>我是页脚</p>
+    <p>我是页脚1</p>
 </div>
 </div>
 <div class="page" num="2">

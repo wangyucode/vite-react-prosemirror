@@ -26,17 +26,19 @@ export const nodes: { [key: string]: NodeSpec } = {
     content: "block+",
     group: "page_part",
     toDOM() {
-      return ["div", { class: "page_header" }, 0];
+      return ["div", { class: "page_header", contenteditable: "false" }, 0];
     },
     parseDOM: [{ tag: "div.page_header" }],
+    selectable: false,
   },
   page_footer: {
     content: "block+",
     group: "page_part",
     toDOM() {
-      return ["div", { class: "page_footer" }, 0];
+      return ["div", { class: "page_footer", contenteditable: "false" }, 0];
     },
     parseDOM: [{ tag: "div.page_footer" }],
+    selectable: false,
   },
   page_content: {
     content: "block+",
