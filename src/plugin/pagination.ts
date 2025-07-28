@@ -57,49 +57,81 @@ function paginate(
     const lastContentNode = pageContentNode.lastChild;
 
     if (!lastContentNode) return;
+    // 可以被分割的节点
     if (lastContentNode.type.name === pageSchema.nodes.paragraph.name) {
       console.log("last content is paragraph", lastContentNode);
       const lastContentNodePos = getNodePos(view.state.doc, lastContentNode);
+      const lastContentDom = view.nodeDOM(lastContentNodePos) as HTMLElement;
+      if (!lastContentDom) return;
+
+      // 计算溢出高度和限制高度
+      const overflowHeight = contentDom.scrollHeight - contentDom.clientHeight;
+      const clonedElement = lastContentDom.cloneNode(true) as HTMLElement;
+
+      // 创建隐藏容器测量高度
+      const tempContainer = document.createElement("div");
+      tempContainer.classList.add("ProseMirror");
+      tempContainer.style.visibility = "hidden";
+      tempContainer.style.backgroundColor = "#f00";
+      tempContainer.style.position = "absolute";
+      tempContainer.style.width = `${lastContentDom.offsetWidth}px`;
+      tempContainer.appendChild(clonedElement);
+      document.body.appendChild(tempContainer);
+
+      const clonedHeight = tempContainer.offsetHeight;
+      const limitHeight = clonedHeight - overflowHeight;
+      let deleteCount = 0;
+      const originalText = lastContentNode.textContent || "";
+
+      // 逐步减少内容直到高度符合要求
+      while (
+        tempContainer.offsetHeight > limitHeight &&
+        deleteCount < originalText.length
+      ) {
+        deleteCount++;
+        clonedElement.textContent = originalText.slice(
+          0,
+          originalText.length - deleteCount
+        );
+      }
+
+      document.body.removeChild(tempContainer);
 
       const tr = view.state.tr;
-      const nodePushToNextPage = lastContentNode.cut(
-        lastContentNode.content.size - 1
-      );
-      const nodeRemain = lastContentNode.cut(
-        0,
-        lastContentNode.content.size - 1
-      );
+      const newContentSize = lastContentNode.content.size - deleteCount;
 
-      // 删除当前页内容
-      if (nodeRemain.content.size === 0) {
+      if (newContentSize <= 0) {
+        // 删除整个节点
         tr.delete(
           lastContentNodePos,
           lastContentNodePos + lastContentNode.nodeSize
         );
       } else {
-        tr.delete(
-          lastContentNodePos + lastContentNode.nodeSize - 2,
+        // 删除溢出的部分
+        tr.deleteRange(
+          lastContentNodePos + (lastContentNode.nodeSize - 1 - deleteCount),
           lastContentNodePos + lastContentNode.nodeSize - 1
         );
       }
 
-      const nextPageNum = pageNum + 1;
-      if (tr.doc.childCount < nextPageNum) {
-        tr.insert(
-          tr.doc.content.size,
-          Node.fromJSON(pageSchema, emptyPageJson(nextPageNum))
-        );
-      }
-      const nextPageNode = tr.doc.child(nextPageNum - 1);
-      const nextPageContentNode = nextPageNode.child(1);
-      const nextFirstContentNode = nextPageContentNode.firstChild;
-      if (!nextFirstContentNode) return;
-      const nextFirstContentNodePos = getNodePos(tr.doc, nextFirstContentNode);
-      // 插入下一页内容
+      // 处理下一页内容
+      const nodePushToNextPage = lastContentNode.cut(newContentSize);
       if (nodePushToNextPage.content.size > 0) {
-        if (nextFirstContentNode.attrs.id === nodePushToNextPage.attrs.id) {
-          tr.insert(nextFirstContentNodePos + 1, nodePushToNextPage.content);
-        } else {
+        const nextPageNum = pageNum + 1;
+        if (tr.doc.childCount < nextPageNum) {
+          tr.insert(
+            tr.doc.content.size,
+            Node.fromJSON(pageSchema, emptyPageJson(nextPageNum))
+          );
+        }
+        const nextPageNode = tr.doc.child(nextPageNum - 1);
+        const nextPageContentNode = nextPageNode.child(1);
+        const nextFirstContentNode = nextPageContentNode.firstChild;
+        if (nextFirstContentNode) {
+          const nextFirstContentNodePos = getNodePos(
+            tr.doc,
+            nextFirstContentNode
+          );
           tr.insert(nextFirstContentNodePos, nodePushToNextPage);
         }
       }

@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
-const RANDOM_LENGTH = 1000;
+const LENGTH = 1000;
 
 export const initialContent = `
 <div class="page" num="1">
@@ -23,7 +23,7 @@ export const initialContent = `
     <p>Try using the “list” item in the menu to wrap this paragraph in
         a numbered list.</p>
     
-    <p>${RANDOM_LENGTH}个随机字符：${getRandomString(RANDOM_LENGTH)}</p>
+    <p>${LENGTH}个随机字符：${getString(LENGTH)}</p>
 <div class="page_footer">
 </div>
 </div>
@@ -63,13 +63,10 @@ export function emptyPageJson(pageNum = 1) {
   };
 }
 
-function getRandomString(length: number) {
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    result += characters.charAt(randomIndex);
-  }
+function getString(length: number) {
+  // 生成按字母顺序排列的26个大写字母
+  const result = Array.from({ length }, (_, i) =>
+    String.fromCharCode(65 + (i % 26))
+  ).join("");
   return result;
 }
