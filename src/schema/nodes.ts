@@ -1,5 +1,6 @@
 import type { NodeSpec, NodeType } from "prosemirror-model";
 import { nodes as basicNodes } from "prosemirror-schema-basic";
+import { v4 as uuidv4 } from "uuid";
 
 export const nodes: { [key: string]: NodeSpec } = {
   doc: {
@@ -11,7 +12,7 @@ export const nodes: { [key: string]: NodeSpec } = {
       {
         tag: "div.page",
         getAttrs(dom: HTMLElement) {
-          return { num: dom.getAttribute("num") || 1 };
+          return { num: Number.parseInt(dom.getAttribute("num") || "1") };
         },
       },
     ],
@@ -23,22 +24,30 @@ export const nodes: { [key: string]: NodeSpec } = {
     },
   },
   page_header: {
-    content: "block+",
     group: "page_part",
     toDOM() {
-      return ["div", { class: "page_header", contenteditable: "false" }, 0];
+      return [
+        "div",
+        { class: "page_header", contenteditable: false },
+        ["div", "我是页眉"],
+      ];
     },
     parseDOM: [{ tag: "div.page_header" }],
+    isAtom: true,
     selectable: false,
   },
   page_footer: {
-    content: "block+",
     group: "page_part",
     toDOM() {
-      return ["div", { class: "page_footer", contenteditable: "false" }, 0];
+      return [
+        "div",
+        { class: "page_footer", contenteditable: false },
+        ["div", "我是页脚"],
+      ];
     },
     parseDOM: [{ tag: "div.page_footer" }],
     selectable: false,
+    isAtom: true,
   },
   page_content: {
     content: "block+",
@@ -48,7 +57,18 @@ export const nodes: { [key: string]: NodeSpec } = {
     },
     parseDOM: [{ tag: "div.page_content" }],
   },
-  paragraph: basicNodes.paragraph,
+  paragraph: {
+    ...basicNodes.paragraph,
+    attrs: {
+      id: { default: null },
+    },
+    parseDOM: [
+      {
+        tag: "p",
+        getAttrs: () => ({ id: uuidv4() }),
+      },
+    ],
+  },
   heading: basicNodes.heading,
   text: basicNodes.text,
 };

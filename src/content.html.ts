@@ -1,7 +1,6 @@
 export const initialContent = `
 <div class="page" num="1">
 <div class="page_header">
-    <p>我是页眉</p>
 </div>
 <div class="page_content">
     <h3>page_content中的h3</h3>
@@ -21,12 +20,10 @@ export const initialContent = `
         a numbered list.</p>
 </div>
 <div class="page_footer">
-    <p>我是页脚1</p>
 </div>
 </div>
 <div class="page" num="2">
 <div class="page_header">
-    <p>我是页眉</p>
 </div>
 <div class="page_content">
     <h3>我是第二页的h3</h3>
@@ -46,7 +43,6 @@ export const initialContent = `
         a numbered list.</p>
 </div>
 <div class="page_footer">
-    <p>我是页脚</p>
 </div>
 </div>
 `;

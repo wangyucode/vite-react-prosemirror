@@ -17,7 +17,8 @@
     "prosemirror-state": "^1.4.3",
     "prosemirror-view": "^1.40.1",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
