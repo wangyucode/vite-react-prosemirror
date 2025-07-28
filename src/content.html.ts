@@ -46,3 +46,21 @@ export const initialContent = `
 </div>
 </div>
 `;
+
+export const initialContentJson = {
+  type: "doc",
+  content: [
+    {
+      type: "page",
+      attrs: {
+        num: 1,
+      },
+      content: [
+        {
+          type: "page_content",
+          content: [],
+        },
+      ],
+    },
+  ],
+};

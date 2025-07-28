@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
 import { EditorState } from "prosemirror-state"
 import { EditorView } from "prosemirror-view"
-import { DOMParser } from "prosemirror-model"
+import { DOMParser, Node } from "prosemirror-model"
 import { exampleSetup } from "prosemirror-example-setup"
 
-import { initialContent } from './content.html'
+import { initialContent, initialContentJson } from './content.html'
 import { pageSchema } from './schema/schema'
 
 import './editor.css'
@@ -19,10 +19,12 @@ function App() {
     tempDiv.innerHTML = initialContent;
     const view = new EditorView(document.querySelector("#editor"), {
       state: EditorState.create({
-        doc: DOMParser.fromSchema(pageSchema).parse(tempDiv),
+        doc: Node.fromJSON(pageSchema, initialContentJson),
         plugins: exampleSetup({ schema: pageSchema }).concat([paginationPlugin])
       })
     });
+    const tr = view.state.tr.setMeta("init", view);
+    view.dispatch(tr.replaceWith(0, view.state.doc.content.size, DOMParser.fromSchema(pageSchema).parse(tempDiv)));
     return () => view.destroy(); // 清理函数
   }, []);
 

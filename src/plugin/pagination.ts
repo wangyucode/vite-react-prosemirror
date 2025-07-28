@@ -13,24 +13,18 @@ const key = new PluginKey("pagination");
 
 export const paginationPlugin = new Plugin<PaginationPluginState>({
   key,
-  view: () => {
-    return {
-      update: (view, prevState) => {
-        if (key.getState(view.state).view) return;
-        key.getState(view.state).view = view;
-      },
-    };
-  },
   state: {
     init: () => {
       return { pageCount: 1, inprogress: false };
     },
     apply: (tr, value, oldState, newState) => {
-      if (!value.view) return value;
+      if (!value.view) {
+        value.view = tr.getMeta("init");
+      }
       if (!tr.docChanged) return value;
       value.inprogress = true;
       requestIdleCallback(() => {
-        pagination(value, oldState);
+        paginate(value, oldState);
       });
 
       return value;
@@ -38,16 +32,17 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
   },
 });
 
-function pagination(
+function paginate(
   paginationState: PaginationPluginState,
   oldState: EditorState
 ) {
+  console.log("paginate");
   const { view } = paginationState;
   const { selection } = oldState;
 
   if (!view) return;
   const page = selection.$anchor.node(1);
-  const pageNum = page.attrs.num;
+  const pageNum = page?.attrs?.num || 1;
   const contentDom = view.dom.querySelector(
     `.page[num="${pageNum}"] .page_content`
   );
