@@ -4,7 +4,7 @@ import { EditorView } from "prosemirror-view"
 import { DOMParser, Node } from "prosemirror-model"
 import { exampleSetup } from "prosemirror-example-setup"
 
-import { initialContent, initialContentJson } from './content.html'
+import { initialContent, emptyPageJson } from './content.html'
 import { pageSchema } from './schema/schema'
 
 import './editor.css'
@@ -19,7 +19,7 @@ function App() {
     tempDiv.innerHTML = initialContent;
     const view = new EditorView(document.querySelector("#editor"), {
       state: EditorState.create({
-        doc: Node.fromJSON(pageSchema, initialContentJson),
+        doc: Node.fromJSON(pageSchema, emptyPageJson(1)),
         plugins: exampleSetup({ schema: pageSchema }).concat([paginationPlugin])
       })
     });

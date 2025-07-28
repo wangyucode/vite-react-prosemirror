@@ -2,6 +2,7 @@ import { EditorState, Plugin, PluginKey, Selection } from "prosemirror-state";
 import { Node } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
 import { pageSchema } from "../schema/schema";
+import { emptyPageJson } from "../content.html";
 
 interface PaginationPluginState {
   pageCount: number;
@@ -20,6 +21,7 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
     apply: (tr, value, oldState, newState) => {
       if (!value.view) {
         value.view = tr.getMeta("init");
+        // return value;
       }
       if (!tr.docChanged) return value;
       value.inprogress = true;
@@ -57,7 +59,7 @@ function paginate(
     if (!lastContentNode) return;
     if (lastContentNode.type.name === pageSchema.nodes.paragraph.name) {
       console.log("last content is paragraph", lastContentNode);
-      const lastContentNodePos = getNodePos(view, lastContentNode);
+      const lastContentNodePos = getNodePos(view.state.doc, lastContentNode);
 
       const tr = view.state.tr;
       const nodePushToNextPage = lastContentNode.cut(
@@ -82,21 +84,23 @@ function paginate(
       }
 
       const nextPageNum = pageNum + 1;
+      if (tr.doc.childCount < nextPageNum) {
+        tr.insert(
+          tr.doc.content.size,
+          Node.fromJSON(pageSchema, emptyPageJson(nextPageNum))
+        );
+      }
       const nextPageNode = tr.doc.child(nextPageNum - 1);
       const nextPageContentNode = nextPageNode.child(1);
       const nextFirstContentNode = nextPageContentNode.firstChild;
       if (!nextFirstContentNode) return;
-      const nextFirstContentNodePos = getNodePos(view, nextFirstContentNode);
-      const trMap = tr.mapping;
+      const nextFirstContentNodePos = getNodePos(tr.doc, nextFirstContentNode);
       // 插入下一页内容
       if (nodePushToNextPage.content.size > 0) {
         if (nextFirstContentNode.attrs.id === nodePushToNextPage.attrs.id) {
-          tr.insert(
-            trMap.map(nextFirstContentNodePos + 1),
-            nodePushToNextPage.content
-          );
+          tr.insert(nextFirstContentNodePos + 1, nodePushToNextPage.content);
         } else {
-          tr.insert(trMap.map(nextFirstContentNodePos), nodePushToNextPage);
+          tr.insert(nextFirstContentNodePos, nodePushToNextPage);
         }
       }
 
@@ -106,8 +110,7 @@ function paginate(
   }
 }
 
-function getNodePos(view: EditorView, node: Node): number {
-  const { doc } = view.state;
+function getNodePos(doc: Node, node: Node): number {
   let pos = 0;
   doc.descendants((desc, p) => {
     if (pos > 0) return false;
