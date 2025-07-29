@@ -29,10 +29,15 @@ function App() {
   }, []);
 
   return (
-    <div className='container'>
-      <h1>Vite + React + ProseMirror 单编辑器 动态分页</h1>
-      <div id="editor"></div>
-    </div>
+    <>
+      <div className='container'>
+        <h1>Vite + React + ProseMirror 单编辑器 动态分页</h1>
+        <div id="editor"></div>
+      </div>
+      <div id="pagination">
+        <div id="pagination-container" className='ProseMirror'></div>
+      </div>
+    </>
   )
 }
 

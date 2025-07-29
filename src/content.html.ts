@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 
-const LENGTH = 1000;
+const LENGTH = 2000;
+const CHINESE_LENGTH = 200;
 
 export const initialContent = `
 <div class="page" num="1">
@@ -23,7 +24,9 @@ export const initialContent = `
     <p>Try using the “list” item in the menu to wrap this paragraph in
         a numbered list.</p>
     
-    <p>${LENGTH}个随机字符：${getString(LENGTH)}</p>
+    <p>${CHINESE_LENGTH}个中文：${getChineseString(CHINESE_LENGTH)}</p>
+    <p>${LENGTH}个大写字母：${getString(LENGTH)}</p>
+
 <div class="page_footer">
 </div>
 </div>
@@ -67,6 +70,13 @@ function getString(length: number) {
   // 生成按字母顺序排列的26个大写字母
   const result = Array.from({ length }, (_, i) =>
     String.fromCharCode(65 + (i % 26))
+  ).join("");
+  return result;
+}
+
+function getChineseString(length: number) {
+  const result = Array.from({ length }, (_, i) =>
+    String.fromCharCode(0x4e00 + i)
   ).join("");
   return result;
 }

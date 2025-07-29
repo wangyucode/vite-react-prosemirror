@@ -8,6 +8,7 @@ interface PaginationPluginState {
   pageCount: number;
   inprogress: boolean;
   view?: EditorView;
+  paginationContainer: HTMLElement;
 }
 
 const key = new PluginKey("pagination");
@@ -16,14 +17,20 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
   key,
   state: {
     init: () => {
-      return { pageCount: 1, inprogress: false };
+      return {
+        pageCount: 1,
+        inprogress: false,
+        paginationContainer: document.getElementById("pagination-container")!,
+      };
     },
     apply: (tr, value, oldState, newState) => {
+      console.log("apply", tr, newState);
       if (!value.view) {
         value.view = tr.getMeta("init");
         // return value;
       }
       if (!tr.docChanged) return value;
+      if (tr.getMeta("composition")) return value; //TODO 中文输入法问题
       value.inprogress = true;
       requestIdleCallback(() => {
         paginate(value, oldState);
@@ -39,7 +46,7 @@ function paginate(
   oldState: EditorState
 ) {
   console.log("paginate");
-  const { view } = paginationState;
+  const { view, paginationContainer } = paginationState;
   const { selection } = oldState;
 
   if (!view) return;
@@ -68,24 +75,17 @@ function paginate(
       const overflowHeight = contentDom.scrollHeight - contentDom.clientHeight;
       const clonedElement = lastContentDom.cloneNode(true) as HTMLElement;
 
-      // 创建隐藏容器测量高度
-      const tempContainer = document.createElement("div");
-      tempContainer.classList.add("ProseMirror");
-      tempContainer.style.visibility = "hidden";
-      tempContainer.style.backgroundColor = "#f00";
-      tempContainer.style.position = "absolute";
-      tempContainer.style.width = `${lastContentDom.offsetWidth}px`;
-      tempContainer.appendChild(clonedElement);
-      document.body.appendChild(tempContainer);
+      // 隐藏容器测量高度
+      paginationContainer.appendChild(clonedElement);
 
-      const clonedHeight = tempContainer.offsetHeight;
+      const clonedHeight = paginationContainer.offsetHeight;
       const limitHeight = clonedHeight - overflowHeight;
       let deleteCount = 0;
       const originalText = lastContentNode.textContent || "";
 
       // 逐步减少内容直到高度符合要求
       while (
-        tempContainer.offsetHeight > limitHeight &&
+        paginationContainer.offsetHeight > limitHeight &&
         deleteCount < originalText.length
       ) {
         deleteCount++;
@@ -94,8 +94,6 @@ function paginate(
           originalText.length - deleteCount
         );
       }
-
-      document.body.removeChild(tempContainer);
 
       const tr = view.state.tr;
       const newContentSize = lastContentNode.content.size - deleteCount;
@@ -132,10 +130,14 @@ function paginate(
             tr.doc,
             nextFirstContentNode
           );
-          tr.insert(nextFirstContentNodePos, nodePushToNextPage);
+          if (nextFirstContentNode.attrs.id === nodePushToNextPage.attrs.id) {
+            tr.insert(nextFirstContentNodePos + 1, nodePushToNextPage.content);
+          } else {
+            tr.insert(nextFirstContentNodePos, nodePushToNextPage);
+          }
         }
       }
-
+      tr.setMeta("addToHistory", false);
       tr.setMeta(key, page.attrs.num);
       view.dispatch(tr);
     }

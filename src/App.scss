@@ -57,3 +57,23 @@
         }
     }
 }
+
+#pagination {
+    position: absolute;
+    top: 0;
+    pointer-events: none;
+
+    #pagination-container {
+        width: 210mm;
+        padding: 0 20mm;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        // background-color: #f77 !important;
+        visibility: hidden;
+
+        * {
+            width: 100%;
+        }
+    }
+}
