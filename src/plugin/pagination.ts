@@ -1,6 +1,8 @@
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Node } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
+import { v4 as uuidv4 } from "uuid";
+
 import { pageSchema } from "../schema/schema";
 import { emptyPageJson } from "../content.html";
 
@@ -38,6 +40,7 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
       if (paginationPageNum) {
         // 对受影响的页面进行空闲时分页
         tr.steps.forEach(({ from }: any) => {
+          if (from === undefined) return;
           const stepResolvePos = newState.doc.resolve(from);
           const changingPage = stepResolvePos.node(1);
           const changingPageNum = changingPage?.attrs?.num;
@@ -110,6 +113,7 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
       const tr = view.state.tr;
       const newContentSize = lastContentNode.content.size - deleteCount;
 
+      let id = lastContentNode.attrs.id;
       if (newContentSize <= 0) {
         // 删除整个节点
         tr.delete(
@@ -122,6 +126,10 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
           lastContentNodePos + (lastContentNode.nodeSize - 1 - deleteCount),
           lastContentNodePos + lastContentNode.nodeSize - 1
         );
+        if (!id) {
+          id = uuidv4();
+          tr.setNodeAttribute(lastContentNodePos, "id", id);
+        }
       }
 
       // 处理下一页内容
@@ -146,6 +154,7 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
             tr.insert(nextFirstContentNodePos + 1, nodePushToNextPage.content);
           } else {
             tr.insert(nextFirstContentNodePos, nodePushToNextPage);
+            tr.setNodeAttribute(nextFirstContentNodePos, "id", id);
           }
         }
       }

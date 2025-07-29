@@ -57,7 +57,16 @@ export const nodes: { [key: string]: NodeSpec } = {
     },
     parseDOM: [{ tag: "div.page_content" }],
   },
-  paragraph: basicNodes.paragraph,
+  paragraph: {
+    ...basicNodes.paragraph,
+    attrs: {
+      id: { default: null },
+    },
+    parseDOM: [{ tag: "p", getAttrs: (dom) => ({ id: dom.id }) }],
+    toDOM(node) {
+      return ["p", { id: node.attrs.id }, 0];
+    },
+  },
   heading: basicNodes.heading,
   text: basicNodes.text,
 };
