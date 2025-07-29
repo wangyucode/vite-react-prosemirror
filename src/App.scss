@@ -53,6 +53,13 @@
             .page_content {
                 height: 297mm - 40mm - 10mm - 10mm; // 294mm A4 page height minus padding and header/footer height
                 overflow-y: hidden;
+                display: flex;
+                flex-direction: column;
+
+                .placeholder {
+                    flex: 1;
+                    background-color: antiquewhite;
+                }
             }
         }
     }
@@ -69,8 +76,8 @@
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
-        // background-color: #f77 !important;
-        visibility: hidden;
+        background-color: #f77 !important;
+        // visibility: hidden;
 
         * {
             width: 100%;

@@ -3,9 +3,8 @@ const CHINESE_LENGTH = 200;
 
 export const initialContent = `
 <div class="page" num="1">
-<div class="page_header">
-</div>
-<div class="page_content">
+  <div class="page_header"></div>
+  <div class="page_content">
     <h3>page_content中的h3</h3>
     <p>page_content中的p</p>
 
@@ -24,13 +23,12 @@ export const initialContent = `
     
     <p>${CHINESE_LENGTH}个中文：${getChineseString(CHINESE_LENGTH)}</p>
     <p>${LENGTH}个大写字母：${getString(LENGTH)}</p>
-
-<div class="page_footer">
-</div>
+  </div>
+  <div class="page_footer"></div>
 </div>
 `;
 
-export function emptyPageJson(pageNum = 1) {
+export function emptyPageJson(pageNum = 1, pageContent: any = []) {
   return {
     type: "doc",
     content: [
@@ -46,9 +44,9 @@ export function emptyPageJson(pageNum = 1) {
           {
             type: "page_content",
             content: [
+              ...pageContent,
               {
-                type: "paragraph",
-                content: [],
+                type: "placeholder",
               },
             ],
           },

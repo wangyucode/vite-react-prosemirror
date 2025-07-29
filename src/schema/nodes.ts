@@ -7,7 +7,7 @@ export const nodes: { [key: string]: NodeSpec } = {
     content: "page+",
   },
   page: {
-    content: "page_part+",
+    content: "page_header page_content page_footer",
     parseDOM: [
       {
         tag: "div.page",
@@ -24,7 +24,6 @@ export const nodes: { [key: string]: NodeSpec } = {
     },
   },
   page_header: {
-    group: "page_part",
     toDOM() {
       return [
         "div",
@@ -37,7 +36,6 @@ export const nodes: { [key: string]: NodeSpec } = {
     selectable: false,
   },
   page_footer: {
-    group: "page_part",
     toDOM() {
       return [
         "div",
@@ -50,8 +48,7 @@ export const nodes: { [key: string]: NodeSpec } = {
     isAtom: true,
   },
   page_content: {
-    content: "block+",
-    group: "page_part",
+    content: "block* placeholder",
     toDOM() {
       return ["div", { class: "page_content" }, 0];
     },
@@ -69,4 +66,12 @@ export const nodes: { [key: string]: NodeSpec } = {
   },
   heading: basicNodes.heading,
   text: basicNodes.text,
+  placeholder: {
+    toDOM() {
+      return ["div", { class: "placeholder" }, 0];
+    },
+    parseDOM: [{ tag: "div.placeholder" }],
+    isAtom: true,
+    selectable: false,
+  },
 };
