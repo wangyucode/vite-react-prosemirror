@@ -1,4 +1,4 @@
-import { Plugin, PluginKey } from "prosemirror-state";
+import { EditorState, Plugin, PluginKey, Transaction } from "prosemirror-state";
 import { Node } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
 import { v4 as uuidv4 } from "uuid";
@@ -35,7 +35,6 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
       const { selection } = oldState;
       const editPage = selection.$anchor.node(1);
       const editPageNum = editPage.attrs.num;
-      if (!editPageNum) return value;
       const paginationPageNum = tr.getMeta(key);
       if (paginationPageNum) {
         // 对受影响的页面进行空闲时分页
@@ -52,6 +51,7 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
       } else {
         value.inprogress = true;
         requestIdleCallback(() => {
+          removeDuplicatedId(editPageNum, value.view!);
           paginate(editPageNum, value);
         });
       }
@@ -175,4 +175,16 @@ function getNodePos(doc: Node, node: Node): number {
     }
   });
   return pos;
+}
+
+function removeDuplicatedId(pageNum: number, view: EditorView) {
+  const domWithId = view.dom.querySelectorAll(
+    `.page[num="${pageNum}"] .page_content [id]:not([id=''])`
+  );
+  if (domWithId.length === 2) {
+    const pos = view.posAtDOM(domWithId[0], 0) - 1;
+    const tr = view.state.tr;
+    tr.setNodeAttribute(pos, "id", null);
+    view.dispatch(tr);
+  }
 }
