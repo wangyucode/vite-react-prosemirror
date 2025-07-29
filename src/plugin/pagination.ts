@@ -24,10 +24,8 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
       };
     },
     apply: (tr, value, oldState, newState) => {
-      console.log("apply", tr, newState);
       if (!value.view) {
         value.view = tr.getMeta("init");
-        // return value;
       }
       if (!tr.docChanged) return value;
       if (tr.getMeta("composition")) return value; //TODO 中文输入法问题
@@ -107,6 +105,7 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
           originalText.length - deleteCount
         );
       }
+      paginationContainer.removeChild(clonedElement);
 
       const tr = view.state.tr;
       const newContentSize = lastContentNode.content.size - deleteCount;

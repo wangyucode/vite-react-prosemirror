@@ -1,6 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
-
-const LENGTH = 10000;
+const LENGTH = 1000;
 const CHINESE_LENGTH = 200;
 
 export const initialContent = `
@@ -50,9 +48,6 @@ export function emptyPageJson(pageNum = 1) {
             content: [
               {
                 type: "paragraph",
-                attrs: {
-                  id: uuidv4(),
-                },
                 content: [],
               },
             ],
