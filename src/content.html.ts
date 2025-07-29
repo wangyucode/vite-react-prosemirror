@@ -28,6 +28,14 @@ export const initialContent = `
 </div>
 `;
 
+// <div class="page" num="2">
+//   <div class="page_header"></div>
+//   <div class="page_content">
+//     <p>${LENGTH}个大写字母：${getString(LENGTH)}</p>
+//   </div>
+//   <div class="page_footer"></div>
+// </div>
+
 export function emptyPageJson(pageNum = 1, pageContent: any = []) {
   return {
     type: "doc",

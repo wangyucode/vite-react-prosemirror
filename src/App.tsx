@@ -24,7 +24,7 @@ function App() {
       })
     });
     const tr = view.state.tr.setMeta("init", view);
-    view.dispatch(tr.replaceWith(0, view.state.doc.content.size, DOMParser.fromSchema(pageSchema).parse(tempDiv)));
+    view.dispatch(tr.replaceWith(0, view.state.doc.content.size, DOMParser.fromSchema(pageSchema).parse(tempDiv)).setMeta("addToHistory", false));
     return () => view.destroy(); // 清理函数
   }, []);
 

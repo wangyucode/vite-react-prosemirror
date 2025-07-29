@@ -59,7 +59,7 @@ export const nodes: { [key: string]: NodeSpec } = {
     attrs: {
       id: { default: null },
     },
-    parseDOM: [{ tag: "p", getAttrs: (dom) => ({ id: dom.id }) }],
+    parseDOM: [{ tag: "p", getAttrs: (dom) => ({ id: dom.id || uuidv4() }) }],
     toDOM(node) {
       return ["p", { id: node.attrs.id }, 0];
     },

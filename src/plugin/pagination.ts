@@ -1,5 +1,5 @@
 import { EditorState, Plugin, PluginKey, Transaction } from "prosemirror-state";
-import { Node } from "prosemirror-model";
+import { Node, Slice } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
 import { v4 as uuidv4 } from "uuid";
 
@@ -7,7 +7,6 @@ import { pageSchema } from "../schema/schema";
 import { emptyPageJson } from "../content.html";
 
 interface PaginationPluginState {
-  pageCount: number;
   inprogress: boolean;
   view?: EditorView;
   paginationContainer: HTMLElement;
@@ -20,44 +19,49 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
   state: {
     init: () => {
       return {
-        pageCount: 1,
         inprogress: false,
         paginationContainer: document.getElementById("pagination-container")!,
       };
     },
-    apply: (tr, value, oldState, newState) => {
-      if (!value.view) {
-        value.view = tr.getMeta("init");
+    apply: (tr, paginationState, oldState, newState) => {
+      if (!paginationState.view) {
+        paginationState.view = tr.getMeta("init");
       }
-      if (!tr.docChanged) return value;
-      if (tr.getMeta("composition")) return value; //TODO 中文输入法问题
+      if (!tr.docChanged) return paginationState;
+      if (tr.getMeta("composition")) return paginationState; //TODO 中文输入法问题
+      if (tr.getMeta("pagination-ignore")) return paginationState;
 
       const { selection } = oldState;
-      if (selection.$anchor.depth === 0) return value;
       const editPage = selection.$anchor.node(1);
-      const editPageNum = editPage.attrs.num;
+      const editPageNum = editPage?.attrs?.num || 1;
       const paginationPageNum = tr.getMeta(key);
       if (paginationPageNum) {
+        const trToTrack = oldState.tr;
         // 对受影响的页面进行空闲时分页
-        tr.steps.forEach(({ from }: any) => {
-          if (from === undefined) return;
-          const stepResolvePos = newState.doc.resolve(from);
-          const changingPage = stepResolvePos.node(1);
+        tr.steps.forEach((step) => {
+          const { from, to, slice } = step as any;
+          if (from === undefined || to === undefined) return;
+          const stepResolvePos = trToTrack.doc.resolve(from);
+          trToTrack.step(step);
+          let changingPage = stepResolvePos.node(1);
+          if (!changingPage && from === to)
+            changingPage = slice.content.content[0];
           const changingPageNum = changingPage?.attrs?.num;
           if (!changingPageNum) return;
+          if (tr.getMeta("paginate-finish") === changingPageNum) return;
           requestIdleCallback(() => {
-            paginate(changingPageNum, value);
+            paginate(changingPageNum, paginationState);
           });
         });
       } else {
-        value.inprogress = true;
+        paginationState.inprogress = true;
         requestIdleCallback(() => {
-          removeDuplicatedId(editPageNum, value.view!);
-          paginate(editPageNum, value);
+          removeDuplicatedId(editPageNum, paginationState.view!);
+          paginate(editPageNum, paginationState);
         });
       }
 
-      return value;
+      return paginationState;
     },
   },
 });
@@ -85,9 +89,15 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
     if (!lastContentNode) return;
     // 可以被分割的节点
     if (lastContentNode.type.name === pageSchema.nodes.paragraph.name) {
-      console.log("last content is paragraph", lastContentNode);
       const lastContentNodePos = getNodePos(view.state.doc, lastContentNode);
-      const lastContentDom = view.nodeDOM(lastContentNodePos) as HTMLElement;
+      let lastContentDom = null;
+      try {
+        lastContentDom = view.nodeDOM(lastContentNodePos) as HTMLElement;
+      } catch (_) {
+        // react 严格模式
+        console.log("strict mode, cancel this pagination");
+        return;
+      }
       if (!lastContentDom) return;
 
       // 计算溢出高度和限制高度
@@ -116,6 +126,8 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
       paginationContainer.removeChild(clonedElement);
 
       const tr = view.state.tr;
+      // 操作元素的高度大于溢出高度，则操作完这个元素后可以标记分页完成
+      if (clonedHeight > overflowHeight) tr.setMeta("paginate-finish", pageNum);
       const newContentSize = lastContentNode.content.size - deleteCount;
 
       let id = lastContentNode.attrs.id;
@@ -131,40 +143,33 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
           lastContentNodePos + (lastContentNode.nodeSize - 1 - deleteCount),
           lastContentNodePos + lastContentNode.nodeSize - 1
         );
-        if (!id) {
-          id = uuidv4();
-          tr.setNodeAttribute(lastContentNodePos, "id", id);
-        }
       }
 
       // 处理下一页内容
       const nodePushToNextPage = lastContentNode.cut(newContentSize);
-      if (nodePushToNextPage.content.size > 0) {
-        const nextPageNum = pageNum + 1;
-        if (tr.doc.childCount < nextPageNum) {
-          // 下一页不存在，创建新页
-          tr.insert(
-            tr.doc.content.size,
-            Node.fromJSON(
-              pageSchema,
-              emptyPageJson(nextPageNum, [nodePushToNextPage.toJSON()])
-            )
-          );
+      const nextPageNum = pageNum + 1;
+      if (tr.doc.childCount < nextPageNum) {
+        // 下一页不存在，创建新页
+        const contentJson = nodePushToNextPage.toJSON();
+        contentJson.attrs.id = id;
+        tr.insert(
+          tr.doc.content.size,
+          Node.fromJSON(pageSchema, emptyPageJson(nextPageNum, [contentJson]))
+        );
+      } else {
+        const nextPageNode = tr.doc.child(nextPageNum - 1);
+        const nextPageContentNode = nextPageNode.child(1);
+        const nextFirstContentNode = nextPageContentNode.firstChild;
+        if (!nextFirstContentNode) return;
+        const nextFirstContentNodePos = getNodePos(
+          tr.doc,
+          nextFirstContentNode
+        );
+        if (nextFirstContentNode.attrs.id === nodePushToNextPage.attrs.id) {
+          tr.insert(nextFirstContentNodePos + 1, nodePushToNextPage.content);
         } else {
-          const nextPageNode = tr.doc.child(nextPageNum - 1);
-          const nextPageContentNode = nextPageNode.child(1);
-          const nextFirstContentNode = nextPageContentNode.firstChild;
-          if (!nextFirstContentNode) return;
-          const nextFirstContentNodePos = getNodePos(
-            tr.doc,
-            nextFirstContentNode
-          );
-          if (nextFirstContentNode.attrs.id === nodePushToNextPage.attrs.id) {
-            tr.insert(nextFirstContentNodePos + 1, nodePushToNextPage.content);
-          } else {
-            tr.insert(nextFirstContentNodePos - 1, nodePushToNextPage);
-            tr.setNodeAttribute(nextFirstContentNodePos, "id", id);
-          }
+          tr.insert(nextFirstContentNodePos, nodePushToNextPage);
+          if (id) tr.setNodeAttribute(nextFirstContentNodePos, "id", id);
         }
       }
       tr.setMeta("addToHistory", false);
@@ -174,39 +179,67 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
   } else {
     // 内容高度小于容器高度，尝试从下一页获取内容
     const nextPageNum = pageNum + 1;
-    if (nextPageNum > paginationState.pageCount) return;
-
+    const nextContentFirstDom = view.dom.querySelector(
+      `.page[num="${nextPageNum}"] .page_content :first-child`
+    );
+    if (!nextContentFirstDom) return;
+    const currentPageNode = view.state.doc.child(pageNum - 1);
+    const currentPageContentNode = currentPageNode.child(1);
+    // 最后一个是placeholder
+    const currentLastContentNode = currentPageContentNode.child(
+      currentPageContentNode.childCount - 2
+    );
     const nextPageNode = view.state.doc.child(nextPageNum - 1);
     const nextPageContentNode = nextPageNode.child(1);
-    const firstContentNode = nextPageContentNode.firstChild;
-
-    if (firstContentNode) {
-      const currentPageNode = view.state.doc.child(pageNum - 1);
-      const currentPageContentNode = currentPageNode.child(1);
-      const currentContentEndPos =
-        getNodePos(view.state.doc, currentPageContentNode) +
-        currentPageContentNode.nodeSize -
-        1;
-      const firstContentNodePos = getNodePos(view.state.doc, firstContentNode);
-
-      const tr = view.state.tr;
-      // 将下一页的第一个元素移到当前页末尾
-      // tr.moveRange(firstContentNodePos, firstContentNodePos + firstContentNode.nodeSize, currentContentEndPos);
-      // view.dispatch(tr);
-
-      // 如果下一页内容为空，删除下一页
-      if (nextPageContentNode.content.size === 0) {
-        const nextPagePos = getNodePos(view.state.doc, nextPageNode);
-        tr.delete(nextPagePos, nextPagePos + nextPageNode.nodeSize);
-        view.dispatch(tr);
-        paginationState.pageCount--;
-      }
+    const nextFirstContentNode = nextPageContentNode.firstChild;
+    if (!nextFirstContentNode) return;
+    const nextFirstContentNodePos = getNodePos(
+      view.state.doc,
+      nextFirstContentNode
+    );
+    const currentLastContentNodePos = getNodePos(
+      view.state.doc,
+      currentLastContentNode
+    );
+    const tr = view.state.tr;
+    // 相同节点需要合并
+    tr.deleteRange(
+      nextFirstContentNodePos,
+      nextFirstContentNodePos + nextFirstContentNode.nodeSize
+    );
+    if (currentLastContentNode.attrs.id === nextFirstContentNode.attrs.id) {
+      tr.insert(
+        currentLastContentNodePos + currentLastContentNode.nodeSize - 1,
+        nextFirstContentNode.content
+      );
+    } else {
+      tr.insert(
+        currentLastContentNodePos + currentLastContentNode.nodeSize,
+        nextFirstContentNode
+      );
     }
+
+    // 如果下一页内容为空，删除下一页
+    const changedNextPage = tr.doc.child(nextPageNum - 1);
+    const changedNextPageContent = changedNextPage.child(1);
+    const changedNextPageContentFirstNode = changedNextPageContent.firstChild;
+    if (
+      changedNextPageContentFirstNode &&
+      changedNextPageContentFirstNode.type.name === "placeholder"
+    ) {
+      const nextPagePos = getNodePos(tr.doc, changedNextPage);
+      tr.delete(nextPagePos, nextPagePos + changedNextPage.nodeSize);
+      tr.setMeta("paginate-finish", nextPageNum);
+    }
+
+    tr.setMeta("addToHistory", false);
+    tr.setMeta(key, pageNum);
+    view.dispatch(tr);
   }
 }
 
 function getNodePos(doc: Node, node: Node): number {
-  let pos = 0;
+  let pos = -1;
   doc.descendants((desc, p) => {
     if (pos > 0) return false;
     if (desc.eq(node)) {
@@ -218,13 +251,63 @@ function getNodePos(doc: Node, node: Node): number {
 }
 
 function removeDuplicatedId(pageNum: number, view: EditorView) {
-  const domWithId = view.dom.querySelectorAll(
-    `.page[num="${pageNum}"] .page_content [id]:not([id=''])`
+  console.log("removeDuplicatedId", pageNum);
+  // 选择.page_content的所有子元素
+  const allElements = view.dom.querySelectorAll(
+    `.page[num="${pageNum}"] .page_content p`
   );
-  if (domWithId.length === 2) {
-    const pos = view.posAtDOM(domWithId[0], 0) - 1;
-    const tr = view.state.tr;
-    tr.setNodeAttribute(pos, "id", null);
+
+  // 创建一个Map来存储每个ID出现的节点
+  const idToNodesMap = new Map<string, Element[]>();
+
+  // 首先收集所有节点
+  allElements.forEach((node) => {
+    const id = node.id;
+
+    // 将节点添加到Map中
+    if (!idToNodesMap.has(id)) {
+      idToNodesMap.set(id, []);
+    }
+    idToNodesMap.get(id)?.push(node);
+  });
+
+  // 创建一个事务来应用所有更改
+  let tr = view.state.tr;
+  tr.setMeta("pagination-ignore", true);
+
+  // 遍历所有ID，处理空ID和重复ID的情况
+  idToNodesMap.forEach((nodes, id) => {
+    if (!id) {
+      // 处理空ID的情况
+      nodes.forEach((node) => {
+        const pos = view.posAtDOM(node, 0) - 1;
+        tr.setNodeAttribute(pos, "id", uuidv4());
+      });
+    } else if (nodes.length > 1) {
+      // 处理重复ID的情况
+      // 检查后页面是否存在相同ID的节点
+      const nextDomWithSameId = view.dom.querySelector(
+        `.page[num="${pageNum + 1}"] .page_content [id="${id}"]`
+      );
+
+      let nodesToBeChangeId: Element[] = [];
+      if (nextDomWithSameId) {
+        // 如果后一页有相同ID的节点，则保留最后一个，修改其余节点
+        nodesToBeChangeId = nodes.slice(0, -1);
+      } else {
+        nodesToBeChangeId = nodes.slice(1);
+      }
+
+      // 执行修改操作
+      nodesToBeChangeId.forEach((node) => {
+        const pos = view.posAtDOM(node, 0) - 1;
+        tr.setNodeAttribute(pos, "id", uuidv4());
+      });
+    }
+  });
+
+  // 如果有更改，则dispatch事务
+  if (tr.docChanged) {
     view.dispatch(tr);
   }
 }
