@@ -179,57 +179,49 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
   } else {
     // 内容高度小于容器高度，尝试从下一页获取内容
     const nextPageNum = pageNum + 1;
-    const nextContentFirstDom = view.dom.querySelector(
-      `.page[num="${nextPageNum}"] .page_content :first-child`
-    );
-    if (!nextContentFirstDom) return;
     const currentPageNode = view.state.doc.child(pageNum - 1);
     const currentPageContentNode = currentPageNode.child(1);
-    // 最后一个是placeholder
+    let currentLastContentNodeIndex = currentPageContentNode.childCount - 2;
+    if (currentLastContentNodeIndex < 0) currentLastContentNodeIndex = 0;
     const currentLastContentNode = currentPageContentNode.child(
-      currentPageContentNode.childCount - 2
+      currentLastContentNodeIndex
     );
+    if (view.state.doc.childCount < nextPageNum) return;
     const nextPageNode = view.state.doc.child(nextPageNum - 1);
     const nextPageContentNode = nextPageNode.child(1);
     const nextFirstContentNode = nextPageContentNode.firstChild;
     if (!nextFirstContentNode) return;
-    const nextFirstContentNodePos = getNodePos(
-      view.state.doc,
-      nextFirstContentNode
-    );
-    const currentLastContentNodePos = getNodePos(
-      view.state.doc,
-      currentLastContentNode
-    );
+    // 如果下一页内容为空，删除下一页
     const tr = view.state.tr;
-    // 相同节点需要合并
-    tr.deleteRange(
-      nextFirstContentNodePos,
-      nextFirstContentNodePos + nextFirstContentNode.nodeSize
-    );
-    if (currentLastContentNode.attrs.id === nextFirstContentNode.attrs.id) {
-      tr.insert(
-        currentLastContentNodePos + currentLastContentNode.nodeSize - 1,
-        nextFirstContentNode.content
-      );
+    if (nextFirstContentNode.type.name === "placeholder") {
+      const nextPagePos = getNodePos(view.state.doc, nextPageNode);
+      tr.delete(nextPagePos, nextPagePos + nextPageNode.nodeSize);
+      tr.setMeta("paginate-finish", nextPageNum);
     } else {
-      tr.insert(
-        currentLastContentNodePos + currentLastContentNode.nodeSize,
+      const nextFirstContentNodePos = getNodePos(
+        view.state.doc,
         nextFirstContentNode
       );
-    }
-
-    // 如果下一页内容为空，删除下一页
-    const changedNextPage = tr.doc.child(nextPageNum - 1);
-    const changedNextPageContent = changedNextPage.child(1);
-    const changedNextPageContentFirstNode = changedNextPageContent.firstChild;
-    if (
-      changedNextPageContentFirstNode &&
-      changedNextPageContentFirstNode.type.name === "placeholder"
-    ) {
-      const nextPagePos = getNodePos(tr.doc, changedNextPage);
-      tr.delete(nextPagePos, nextPagePos + changedNextPage.nodeSize);
-      tr.setMeta("paginate-finish", nextPageNum);
+      const currentLastContentNodePos = getNodePos(
+        view.state.doc,
+        currentLastContentNode
+      );
+      // 相同节点需要合并
+      tr.deleteRange(
+        nextFirstContentNodePos,
+        nextFirstContentNodePos + nextFirstContentNode.nodeSize
+      );
+      if (currentLastContentNode.attrs.id === nextFirstContentNode.attrs.id) {
+        tr.insert(
+          currentLastContentNodePos + currentLastContentNode.nodeSize - 1,
+          nextFirstContentNode.content
+        );
+      } else {
+        tr.insert(
+          currentLastContentNodePos + currentLastContentNode.nodeSize,
+          nextFirstContentNode
+        );
+      }
     }
 
     tr.setMeta("addToHistory", false);
@@ -279,10 +271,10 @@ function removeDuplicatedId(pageNum: number, view: EditorView) {
   idToNodesMap.forEach((nodes, id) => {
     if (!id) {
       // 处理空ID的情况
-      nodes.forEach((node) => {
-        const pos = view.posAtDOM(node, 0) - 1;
-        tr.setNodeAttribute(pos, "id", uuidv4());
-      });
+      // nodes.forEach((node) => {
+      //   const pos = view.posAtDOM(node, 0) - 1;
+      //   tr.setNodeAttribute(pos, "id", uuidv4());
+      // });
     } else if (nodes.length > 1) {
       // 处理重复ID的情况
       // 检查后页面是否存在相同ID的节点

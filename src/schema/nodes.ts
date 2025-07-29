@@ -57,7 +57,7 @@ export const nodes: { [key: string]: NodeSpec } = {
   paragraph: {
     ...basicNodes.paragraph,
     attrs: {
-      id: { default: null },
+      id: { default: uuidv4() },
     },
     parseDOM: [{ tag: "p", getAttrs: (dom) => ({ id: dom.id || uuidv4() }) }],
     toDOM(node) {
@@ -67,10 +67,18 @@ export const nodes: { [key: string]: NodeSpec } = {
   heading: basicNodes.heading,
   text: basicNodes.text,
   placeholder: {
-    toDOM() {
-      return ["div", { class: "placeholder" }, 0];
+    attrs: {
+      id: { default: uuidv4() },
     },
-    parseDOM: [{ tag: "div.placeholder" }],
+    toDOM(node) {
+      return ["div", { class: "placeholder", id: node.attrs.id }, 0];
+    },
+    parseDOM: [
+      {
+        tag: "div.placeholder",
+        getAttrs: (dom) => ({ id: dom.id || uuidv4() }),
+      },
+    ],
     isAtom: true,
     selectable: false,
   },

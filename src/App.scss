@@ -58,7 +58,7 @@
 
                 .placeholder {
                     flex: 1;
-                    // background-color: antiquewhite;
+                    background-color: antiquewhite;
                 }
             }
         }
@@ -76,8 +76,8 @@
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
-        // background-color: #f77 !important;
-        visibility: hidden;
+        background-color: #f77 !important;
+        // visibility: hidden;
 
         * {
             width: 100%;

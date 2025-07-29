@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from "uuid";
+
 const LENGTH = 1000;
 const CHINESE_LENGTH = 200;
 
@@ -54,6 +56,9 @@ export function emptyPageJson(pageNum = 1, pageContent: any = []) {
             content: [
               ...pageContent,
               {
+                attrs: {
+                  id: uuidv4(),
+                },
                 type: "placeholder",
               },
             ],
