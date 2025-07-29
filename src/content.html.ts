@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
-const LENGTH = 2000;
+const LENGTH = 10000;
 const CHINESE_LENGTH = 200;
 
 export const initialContent = `

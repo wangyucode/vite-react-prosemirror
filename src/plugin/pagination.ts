@@ -1,4 +1,4 @@
-import { EditorState, Plugin, PluginKey, Selection } from "prosemirror-state";
+import { Plugin, PluginKey } from "prosemirror-state";
 import { Node } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
 import { pageSchema } from "../schema/schema";
@@ -31,27 +31,40 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
       }
       if (!tr.docChanged) return value;
       if (tr.getMeta("composition")) return value; //TODO 中文输入法问题
-      value.inprogress = true;
-      requestIdleCallback(() => {
-        paginate(value, oldState);
-      });
+
+      const { selection } = oldState;
+      const editPage = selection.$anchor.node(1);
+      const editPageNum = editPage.attrs.num;
+      if (!editPageNum) return value;
+      const paginationPageNum = tr.getMeta(key);
+      if (paginationPageNum) {
+        // 对受影响的页面进行空闲时分页
+        tr.steps.forEach(({ from }: any) => {
+          const stepResolvePos = newState.doc.resolve(from);
+          const changingPage = stepResolvePos.node(1);
+          const changingPageNum = changingPage?.attrs?.num;
+          if (!changingPageNum) return;
+          requestIdleCallback(() => {
+            paginate(changingPageNum, value);
+          });
+        });
+      } else {
+        value.inprogress = true;
+        requestIdleCallback(() => {
+          paginate(editPageNum, value);
+        });
+      }
 
       return value;
     },
   },
 });
 
-function paginate(
-  paginationState: PaginationPluginState,
-  oldState: EditorState
-) {
+function paginate(pageNum: number, paginationState: PaginationPluginState) {
   console.log("paginate");
   const { view, paginationContainer } = paginationState;
-  const { selection } = oldState;
 
   if (!view) return;
-  const page = selection.$anchor.node(1);
-  const pageNum = page?.attrs?.num || 1;
   const contentDom = view.dom.querySelector(
     `.page[num="${pageNum}"] .page_content`
   );
@@ -138,7 +151,7 @@ function paginate(
         }
       }
       tr.setMeta("addToHistory", false);
-      tr.setMeta(key, page.attrs.num);
+      tr.setMeta(key, pageNum);
       view.dispatch(tr);
     }
   }
