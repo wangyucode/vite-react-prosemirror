@@ -16,6 +16,37 @@ const key = new PluginKey("pagination");
 
 export const paginationPlugin = new Plugin<PaginationPluginState>({
   key,
+  props: {
+    handleKeyDown: (view, event) => {
+      if (event.key === "Backspace") {
+        const {
+          doc,
+          selection: { $anchor },
+        } = view.state;
+        // 在页面最开头按退格
+        if ($anchor.start($anchor.depth) === $anchor.pos) {
+          const page = $anchor.node(1);
+          if (!page) return;
+          const pageNum = page.attrs.num;
+          if (pageNum < 2) return;
+          const prePage = doc.child(pageNum - 2);
+          if (!prePage) return;
+          const prePageContent = prePage.child(1);
+          if (prePageContent.childCount < 2) return;
+          // 除去placeholder的最后一个节点
+          const prePageLastChild = prePageContent.child(
+            prePageContent.childCount - 2
+          );
+          if (!prePageLastChild) return;
+          const prePageLastChildPos = getNodePos(doc, prePageLastChild);
+          const pos = prePageLastChildPos + prePageLastChild.nodeSize - 1;
+          const tr = view.state.tr;
+          tr.setSelection(Selection.near(doc.resolve(pos), -1));
+          view.dispatch(tr);
+        }
+      }
+    },
+  },
   state: {
     init: () => {
       return {
@@ -83,6 +114,7 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
   if (!contentDom) return;
   const placeholderDom = contentDom.querySelector(".placeholder");
   if (!placeholderDom) return;
+  const { selection } = view.state;
   if (placeholderDom.clientHeight === 0) {
     // 内容溢出
     const pageNode = view.state.doc.child(pageNum - 1);
@@ -93,7 +125,6 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
     );
 
     if (!lastContentNode) return;
-    const { selection } = view.state;
     // 可以被分割的节点
     if (lastContentNode.type.name === pageSchema.nodes.paragraph.name) {
       const lastContentNodePos = getNodePos(view.state.doc, lastContentNode);
@@ -190,8 +221,7 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
               isSelectionPosGoNextPage
                 ? nextFirstContentNodePos + nodePushToNextPage.content.size + 1
                 : selection.$anchor.pos
-            ),
-            1
+            )
           )
         );
       }
@@ -247,7 +277,7 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
         );
       }
     }
-
+    tr.setSelection(Selection.near(tr.doc.resolve(selection.$anchor.pos)));
     tr.setMeta("addToHistory", false);
     tr.setMeta(key, pageNum);
     view.dispatch(tr);
