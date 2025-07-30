@@ -17,34 +17,64 @@ const key = new PluginKey("pagination");
 export const paginationPlugin = new Plugin<PaginationPluginState>({
   key,
   props: {
-    handleKeyDown: (view, event) => {
-      if (event.key === "Backspace") {
-        const {
-          doc,
-          selection: { $anchor },
-        } = view.state;
-        // 在页面最开头按退格
-        if ($anchor.start($anchor.depth) === $anchor.pos) {
-          const page = $anchor.node(1);
-          if (!page) return;
-          const pageNum = page.attrs.num;
-          if (pageNum < 2) return;
-          const prePage = doc.child(pageNum - 2);
-          if (!prePage) return;
-          const prePageContent = prePage.child(1);
-          if (prePageContent.childCount < 2) return;
-          // 除去placeholder的最后一个节点
-          const prePageLastChild = prePageContent.child(
-            prePageContent.childCount - 2
-          );
-          if (!prePageLastChild) return;
-          const prePageLastChildPos = getNodePos(doc, prePageLastChild);
-          const pos = prePageLastChildPos + prePageLastChild.nodeSize - 1;
-          const tr = view.state.tr;
-          tr.setSelection(Selection.near(doc.resolve(pos), -1));
-          view.dispatch(tr);
+    handleDOMEvents: {
+      keydown: (view, event) => {
+        console.log("keydown", event.key);
+        if (event.key === "Backspace") {
+          const {
+            doc,
+            selection: { $anchor },
+          } = view.state;
+          // 在页面最开头按退格
+          if ($anchor.start($anchor.depth) === $anchor.pos) {
+            const page = $anchor.node(1);
+            if (!page) return;
+            const pageNum = page.attrs.num;
+            if (pageNum < 2) return;
+            const prePage = doc.child(pageNum - 2);
+            if (!prePage) return;
+            const prePageContent = prePage.child(1);
+            if (prePageContent.childCount < 2) return;
+            // 除去placeholder的最后一个节点
+            const prePageLastChild = prePageContent.child(
+              prePageContent.childCount - 2
+            );
+            if (!prePageLastChild) return;
+            const prePageLastChildPos = getNodePos(doc, prePageLastChild);
+            const pos = prePageLastChildPos + prePageLastChild.nodeSize - 1;
+            const tr = view.state.tr;
+            tr.setSelection(Selection.near(doc.resolve(pos), -1));
+            view.dispatch(tr);
+          }
+        } else if (event.key === "Delete") {
+          const {
+            doc,
+            selection: { $anchor },
+          } = view.state;
+          // 在页面最结尾按删除
+          if ($anchor.end($anchor.depth) === $anchor.pos) {
+            const page = $anchor.node(1);
+            if (!page) return;
+            const pageNum = page.attrs.num;
+            if (pageNum > doc.childCount - 1) return;
+            const nextPage = doc.child(pageNum);
+            if (!nextPage) return;
+            const nextPageContent = nextPage.child(1);
+            const nextPageFirstChild = nextPageContent.firstChild;
+            if (
+              !nextPageFirstChild ||
+              nextPageFirstChild.type.name === "placeholder"
+            )
+              return;
+            const nextPageFirstChildPos = getNodePos(doc, nextPageFirstChild);
+            const tr = view.state.tr;
+            tr.delete(nextPageFirstChildPos + 1, nextPageFirstChildPos + 2);
+            tr.setMeta(key, pageNum);
+            view.dispatch(tr);
+            event.preventDefault();
+          }
         }
-      }
+      },
     },
   },
   state: {
