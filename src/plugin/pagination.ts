@@ -28,7 +28,13 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
         paginationState.view = tr.getMeta("init");
       }
       if (!tr.docChanged) return paginationState;
-      if (tr.getMeta("composition")) return paginationState; //TODO 中文输入法问题
+
+      if (tr.getMeta("composition")) {
+        const { from, to } = tr.steps[0] as any;
+        if (from === to) {
+          return paginationState; // 中文输入法问题
+        }
+      }
       if (tr.getMeta("pagination-ignore")) return paginationState;
 
       const { selection } = oldState;
