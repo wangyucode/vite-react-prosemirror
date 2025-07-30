@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 
 const LENGTH = 1000;
+const REPEAT = 1;
 const CHINESE_LENGTH = 200;
 
 export const initialContent = `
@@ -24,7 +25,10 @@ export const initialContent = `
         a numbered list.</p>
     
     <p>${CHINESE_LENGTH}个中文：${getChineseString(CHINESE_LENGTH)}</p>
-    <p>${LENGTH}个大写字母：${getString(LENGTH)}</p>
+    ${duplicateString(
+      `<p>${LENGTH}个大写字母：${getString(LENGTH)}</p>`,
+      REPEAT
+    )}
   </div>
   <div class="page_footer"></div>
 </div>
@@ -37,6 +41,10 @@ export const initialContent = `
 //   </div>
 //   <div class="page_footer"></div>
 // </div>
+
+export function duplicateString(str: string, count: number) {
+  return str.repeat(count);
+}
 
 export function emptyPageJson(pageNum = 1, pageContent: any = []) {
   return {

@@ -7,7 +7,7 @@ import { pageSchema } from "../schema/schema";
 import { emptyPageJson } from "../content.html";
 
 interface PaginationPluginState {
-  inprogress: boolean;
+  pageStatus: Map<number, boolean>;
   view?: EditorView;
   paginationContainer: HTMLElement;
 }
@@ -80,7 +80,7 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
   state: {
     init: () => {
       return {
-        inprogress: false,
+        pageStatus: new Map(),
         paginationContainer: document.getElementById("pagination-container")!,
       };
     },
@@ -103,25 +103,35 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
       const editPageNum = editPage?.attrs?.num || 1;
       const paginationPageNum = tr.getMeta(key);
       if (paginationPageNum) {
-        const trToTrack = oldState.tr;
         // 对受影响的页面进行空闲时分页
-        tr.steps.forEach((step) => {
+        tr.steps.forEach((step, index) => {
           const { from, to, slice } = step as any;
           if (from === undefined || to === undefined) return;
-          const stepResolvePos = trToTrack.doc.resolve(from);
-          trToTrack.step(step);
+          const stepResolvePos = tr.docs[index].resolve(from);
           let changingPage = stepResolvePos.node(1);
           if (!changingPage && from === to)
             changingPage = slice.content.content[0];
           const changingPageNum = changingPage?.attrs?.num;
           if (!changingPageNum) return;
-          if (tr.getMeta("paginate-finish") === changingPageNum) return;
+          const isFinished = tr.getMeta("paginate-finish") === changingPageNum;
+          updatePageStatus(
+            changingPageNum,
+            isFinished,
+            paginationState.pageStatus,
+            newState.doc.childCount
+          );
+          if (isFinished) return;
           requestIdleCallback(() => {
             paginate(changingPageNum, paginationState);
           });
         });
       } else {
-        paginationState.inprogress = true;
+        updatePageStatus(
+          editPageNum,
+          false,
+          paginationState.pageStatus,
+          newState.doc.childCount
+        );
         requestIdleCallback(() => {
           removeDuplicatedId(editPageNum, paginationState.view!);
           paginate(editPageNum, paginationState);
@@ -134,7 +144,6 @@ export const paginationPlugin = new Plugin<PaginationPluginState>({
 });
 
 function paginate(pageNum: number, paginationState: PaginationPluginState) {
-  console.log("paginate", pageNum);
   const { view, paginationContainer } = paginationState;
 
   if (!view) return;
@@ -164,6 +173,12 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
       } catch (_) {
         // react 严格模式
         console.log("strict mode, cancel this pagination");
+        updatePageStatus(
+          pageNum,
+          true,
+          paginationState.pageStatus,
+          view.state.doc.childCount
+        );
         return;
       }
       if (!lastContentDom) return;
@@ -270,7 +285,19 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
     const currentLastContentNode = currentPageContentNode.child(
       currentLastContentNodeIndex
     );
-    if (view.state.doc.childCount < nextPageNum) return;
+    // 下一页不存在，pageNum分页完成
+    if (view.state.doc.childCount < nextPageNum) {
+      // requestIdleCallback(() => {
+      console.timeLog("paginate", "effect-finish", pageNum);
+      updatePageStatus(
+        pageNum,
+        true,
+        paginationState.pageStatus,
+        view.state.doc.childCount
+      );
+      // });
+      return;
+    }
     const nextPageNode = view.state.doc.child(nextPageNum - 1);
     const nextPageContentNode = nextPageNode.child(1);
     const nextFirstContentNode = nextPageContentNode.firstChild;
@@ -314,6 +341,33 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
   }
 }
 
+// TODO 更新时机还有问题，特别是3页及以上
+function updatePageStatus(
+  pageNum: number,
+  isFinished: boolean,
+  pageStatus: Map<number, boolean>,
+  pageCount: number
+) {
+  if (pageStatus.size === 0) console.time("paginate");
+  console.timeLog(
+    "paginate",
+    "updatePageStatus",
+    pageNum,
+    isFinished,
+    pageCount
+  );
+  pageStatus.set(pageNum, isFinished);
+  if (
+    pageNum === pageCount &&
+    isFinished &&
+    pageStatus.size === pageCount &&
+    Array.from(pageStatus.values()).every(Boolean)
+  ) {
+    console.timeEnd("paginate");
+    pageStatus.clear();
+  }
+}
+
 function getNodePos(doc: Node, node: Node): number {
   let pos = -1;
   doc.descendants((desc, p) => {
@@ -327,7 +381,6 @@ function getNodePos(doc: Node, node: Node): number {
 }
 
 function removeDuplicatedId(pageNum: number, view: EditorView) {
-  console.log("removeDuplicatedId", pageNum);
   // 选择.page_content的所有子元素
   const allElements = view.dom.querySelectorAll(
     `.page[num="${pageNum}"] .page_content p`
@@ -359,6 +412,7 @@ function removeDuplicatedId(pageNum: number, view: EditorView) {
       //   const pos = view.posAtDOM(node, 0) - 1;
       //   tr.setNodeAttribute(pos, "id", uuidv4());
       // });
+      console.error("empty id in page", pageNum);
     } else if (nodes.length > 1) {
       // 处理重复ID的情况
       // 检查后页面是否存在相同ID的节点
@@ -366,16 +420,16 @@ function removeDuplicatedId(pageNum: number, view: EditorView) {
         `.page[num="${pageNum + 1}"] .page_content [id="${id}"]`
       );
 
-      let nodesToBeChangeId: Element[] = [];
+      let nodesToChangeId: Element[] = [];
       if (nextDomWithSameId) {
         // 如果后一页有相同ID的节点，则保留最后一个，修改其余节点
-        nodesToBeChangeId = nodes.slice(0, -1);
+        nodesToChangeId = nodes.slice(0, -1);
       } else {
-        nodesToBeChangeId = nodes.slice(1);
+        nodesToChangeId = nodes.slice(1);
       }
 
       // 执行修改操作
-      nodesToBeChangeId.forEach((node) => {
+      nodesToChangeId.forEach((node) => {
         const pos = view.posAtDOM(node, 0) - 1;
         tr.setNodeAttribute(pos, "id", uuidv4());
       });
@@ -384,6 +438,7 @@ function removeDuplicatedId(pageNum: number, view: EditorView) {
 
   // 如果有更改，则dispatch事务
   if (tr.docChanged) {
+    console.log("removeDuplicatedId", pageNum, tr);
     view.dispatch(tr);
   }
 }
