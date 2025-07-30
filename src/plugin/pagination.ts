@@ -1,5 +1,5 @@
-import { EditorState, Plugin, PluginKey, Transaction } from "prosemirror-state";
-import { Node, Slice } from "prosemirror-model";
+import { Plugin, PluginKey, Selection } from "prosemirror-state";
+import { Node } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
 import { v4 as uuidv4 } from "uuid";
 
@@ -93,6 +93,7 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
     );
 
     if (!lastContentNode) return;
+    const { selection } = view.state;
     // 可以被分割的节点
     if (lastContentNode.type.name === pageSchema.nodes.paragraph.name) {
       const lastContentNodePos = getNodePos(view.state.doc, lastContentNode);
@@ -136,7 +137,6 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
       if (clonedHeight > overflowHeight) tr.setMeta("paginate-finish", pageNum);
       const newContentSize = lastContentNode.content.size - deleteCount;
 
-      let id = lastContentNode.attrs.id;
       if (newContentSize <= 0) {
         // 删除整个节点
         tr.delete(
@@ -151,16 +151,24 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
         );
       }
 
+      let isSelectionPosGoNextPage = false;
+      if (
+        selection.$anchor.pos >
+        lastContentNodePos + (lastContentNode.nodeSize - 1 - deleteCount)
+      ) {
+        isSelectionPosGoNextPage = true;
+      }
       // 处理下一页内容
       const nodePushToNextPage = lastContentNode.cut(newContentSize);
       const nextPageNum = pageNum + 1;
       if (tr.doc.childCount < nextPageNum) {
         // 下一页不存在，创建新页
-        const contentJson = nodePushToNextPage.toJSON();
-        contentJson.attrs.id = id;
         tr.insert(
           tr.doc.content.size,
-          Node.fromJSON(pageSchema, emptyPageJson(nextPageNum, [contentJson]))
+          Node.fromJSON(
+            pageSchema,
+            emptyPageJson(nextPageNum, [nodePushToNextPage.toJSON()])
+          )
         );
       } else {
         const nextPageNode = tr.doc.child(nextPageNum - 1);
@@ -175,11 +183,21 @@ function paginate(pageNum: number, paginationState: PaginationPluginState) {
           tr.insert(nextFirstContentNodePos + 1, nodePushToNextPage.content);
         } else {
           tr.insert(nextFirstContentNodePos, nodePushToNextPage);
-          if (id) tr.setNodeAttribute(nextFirstContentNodePos, "id", id);
         }
+        tr.setSelection(
+          Selection.near(
+            tr.doc.resolve(
+              isSelectionPosGoNextPage
+                ? nextFirstContentNodePos + nodePushToNextPage.content.size + 1
+                : selection.$anchor.pos
+            ),
+            1
+          )
+        );
       }
       tr.setMeta("addToHistory", false);
       tr.setMeta(key, pageNum);
+
       view.dispatch(tr);
     }
   } else {
