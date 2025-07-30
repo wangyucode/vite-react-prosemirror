@@ -1,69 +1,38 @@
-# React + TypeScript + Vite
+# vite-react-prosemirror
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+基于 React 和 ProseMirror 的富文本编辑器，支持动态分页功能的单编辑器实现
+A rich text editor based on React and ProseMirror with dynamic pagination in a single editor instance
 
-Currently, two official plugins are available:
+## 主要功能点 / Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 单编辑器实例中实现多页面管理
+  Manage multiple pages in a single editor instance
+- 内容溢出时自动分页处理
+  Automatic pagination when content overflows
+- 自定义页面结构（页眉、页脚、内容区域）
+  Custom page structure (header, footer, content area)
+- 支持段落级内容拆分与合并
+  Support paragraph-level content splitting and merging
 
-## Expanding the ESLint configuration
+## 技术栈及对应官网 / Tech Stack & Official Websites
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **React** - https://reactjs.org/
+- **TypeScript** - https://www.typescriptlang.org/
+- **Vite** - https://vitejs.dev/
+- **ProseMirror** - https://prosemirror.net/
+- **Sass** - https://sass-lang.com/
+- **ESLint** - https://eslint.org/
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 开发方法 / Development Guide
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+### 安装依赖 / Install Dependencies
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 启动开发服务器 / Start Development Server
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
